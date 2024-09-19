@@ -33,18 +33,25 @@ def has_news_audio(news_info):
         return False # Check if audio key exists in news_info
 
 def prepare_news_data_with_audio(news_info):
+    """Prepares a structure for news data with audio.
+
+    Args:
+        news_info (dict): The news information dictionary containing all relevant data.
+
+    Returns:
+        dict: A dictionary containing the title, body text, audio URL, and metadata.
+    """
     news_data_with_audio = {
-        'title': None,
-        'body_text': None,
-        'audio_url': None,
+        'title': news_info['data']['title'],
+        'body_text':  "\n".join(news_info['data']['body'].get('Text', [])),
+        'audio_url':  news_info['data']['body'].get('Audio', ''),
         'metadata': {
-            'published_date': None,
-            'author': None,
-            'category': None,
-            'news_url': None
+            'published_date': news_info['data']['meta_data'].get('Date'),
+            'author': news_info['data']['meta_data'].get('Author'),
+            'category': news_info['data']['meta_data'].get('Tags', []),
+            'news_url': news_info['data']['meta_data'].get('URL')
         }
     }
-
     return news_data_with_audio
 
 def get_news_with_audio(news_data, output_dir):
@@ -57,27 +64,40 @@ def get_news_with_audio(news_data, output_dir):
         dict: dict of news dataset with audio
     """
     news_data_with_audio = {}
-    # Iterate through the news dataset and filter out items with audio
     for news_id, news_info in news_data.items():
         if has_news_audio(news_info):
-            news_data_with_audio = prepare_news_data_with_audio(news_info)
-            news_data_with_audio[news_id] = news_data_with_audio
+            news_data_with_audio[news_id] = prepare_news_data_with_audio(news_info)
     return news_data_with_audio
 
-def save_json_file(file_path, content):
+def save_json_file(article_data, article_id, output_dir):
     """Saves content to a json file
 
     Args:
-        file_path (str): file path to save the content
-        content (dict): content to save
+        article_data (dict): The article data containing audio URL, body text, and metadata.
+        article_id (str): The ID of the article, used for naming the directory.
+        output_dir (Path): The directory where the article data will be saved.
     """
-    try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(content, f, ensure_ascii=False, indent=4)  # Save the content passed as argument
-        print(f"JSON file saved successfully at {file_path}")
-    except Exception as e:
-        print(f"Error saving JSON file: {e}")
+    article_dir = output_dir / article_id
+    article_dir.mkdir(parents=True, exist_ok=True)
 
+    # Get the first audio URL if it is a list
+    audio_url = article_data['audio_url']
+    if isinstance(audio_url, list) and audio_url:
+        audio_url = audio_url[0]  # Use the first audio URL
+
+    # Now you can safely use split
+    audio_file_name = audio_url.split('/')[-1]  # Extracts the audio file name from the URL
+
+    with open(article_dir / audio_file_name, 'w', encoding='utf-8') as audio_file:
+        audio_file.write(audio_url)  # Simulate saving the audio file
+
+    # Save body text
+    with open(article_dir / 'news_text.txt', 'w', encoding='utf-8') as text_file:
+        text_file.write(article_data['body_text'])
+
+    # Save metadata
+    with open(article_dir / 'metadata.json', 'w', encoding='utf-8') as meta_file:
+        json.dump(article_data['metadata'], meta_file, ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":
     news_houses = ['VOT', 'VOA', 'RFA']
@@ -97,8 +117,8 @@ if __name__ == "__main__":
             news_data = read_json_file(news_dataset_file_path)
             
             # Filter the news data for entries with audio
-            news_data_with_audio = get_news_with_audio(news_data)
+            news_data_with_audio = get_news_with_audio(news_data, output_dir)  
             
             # Save the filtered dataset to a new file
-            news_data_with_audio_file_path = output_dir / news_dataset_file_path.name
-            save_json_file(news_data_with_audio_file_path, news_data_with_audio)
+            for article_id, article_data in news_data_with_audio.items():
+                save_json_file(article_data, article_id, output_dir) 

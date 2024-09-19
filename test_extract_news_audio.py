@@ -11,7 +11,7 @@ def test_has_news_audio():
     expected_results = {
         "1": True,
         "2": False,
-        "3": False,
+        "3": False
     }
     
     for article_id, article in news_data.items():
