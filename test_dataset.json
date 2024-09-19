@@ -1,5 +1,5 @@
 {
-    "Page རྒྱལསྤྱི 1_Article_1": {
+    "1": {
         "data": {
             "title": "སུད་སི་དང་",
             "body": {
@@ -8,23 +8,12 @@
                     "a",
                     "b"
                 ]
-            },
-            "meta_data": {
-                "URL": "https://vot.org/%e0%bd%a6%e0%bd%b4%e0%bd%91%e0%bc%8b%e0%bd%a6%e0%bd%b2%e0%bc%8b%e0%bd%91%e0%bd%84%e0%bc%8b%e0%bd%a2%e0%be%92%e0%be%b1%e0%bc%8b%e0%bd%93%e0%bd%82%e0%bc%8b%e0%bd%82%e0%bd%9e%e0%bd%b4%e0%bd%84%e0%bc%8b/",
-                "Author": "vot.org",
-                "Date": "16/08/2024",
-                "Tags": [
-                    "གསར་འགྱུར།",
-                    "བཙན་བྱོལ།",
-                    "རྒྱལ་སྤྱི།",
-                    "སུད་སི།"
-                ]
             }
         },
         "Message": "Success",
         "Response": 200
     },
-    "Page རྒྱལསྤྱི 1_Article_2": {
+    "2": {
         "data": {
             "title": "སུད་སི་དང་",
             "body": {
@@ -33,20 +22,20 @@
                     "a",
                     "b"
                 ]
-            },
-            "meta_data": {
-                "URL": "https://vot.org/%e0%bd%a6%e0%bd%b4%e0%bd%91%e0%bc%8b%e0%bd%a6%e0%bd%b2%e0%bc%8b%e0%bd%91%e0%bd%84%e0%bc%8b%e0%bd%a2%e0%be%92%e0%be%b1%e0%bc%8b%e0%bd%93%e0%bd%82%e0%bc%8b%e0%bd%82%e0%bd%9e%e0%bd%b4%e0%bd%84%e0%bc%8b/",
-                "Author": "vot.org",
-                "Date": "16/08/2024",
-                "Tags": [
-                    "གསར་འགྱུར།",
-                    "བཙན་བྱོལ།",
-                    "རྒྱལ་སྤྱི།",
-                    "སུད་སི།"
-                ]
             }
         },
         "Message": "Success",
         "Response": 200
+    },
+    "3": {
+            "data": {
+                "title": "སུད་སི་དང་",
+                "body": {
+                    "Text": [
+                        "a",
+                        "b"
+                    ]
+                }
+            }
     }
 }

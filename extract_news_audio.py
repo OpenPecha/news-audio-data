@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from tqdm import tqdm
 
 def read_json_file(file_path):
     """Reads a json file and returns the content
@@ -24,7 +23,11 @@ def has_news_audio(news_info):
     Returns:
         bool: True if news has audio, False otherwise
     """
-    if 'audio' in news_info and 'url' in news_info['audio']:
+    news_data = news_info.get('data', {})
+    news_body = news_data.get('body', {})
+    news_audio_url = news_body.get('Audio', '') # Get the audio URL if it exists
+
+    if news_audio_url:
         return True
     else:
         return False # Check if audio key exists in news_info
@@ -61,24 +64,25 @@ def save_json_file(file_path, content):
 
 
 if __name__ == "__main__":
-    news_house = 'VOT'  # placeholder for the news house
-    news_dataset_dir = Path(f'./data/{news_house}/news_dataset')
-    
-    # Create output directory if it doesn't exist
-    output_dir = Path(f'./data/{news_house}/news_dataset_with_audio')
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Get all JSON file paths from the dataset directory
-    news_dataset_file_paths = list(news_dataset_dir.iterdir())
-    news_dataset_file_paths.sort()
-    
-    for news_dataset_file_path in news_dataset_file_paths:
-        # Read each JSON file
-        news_data = read_json_file(news_dataset_file_path)
+    news_houses = ['VOT', 'VOA', 'RFA']
+    for news_house in news_houses:
+        news_dataset_dir = Path(f'./data/{news_house}/news_dataset')
         
-        # Filter the news data for entries with audio
-        news_data_with_audio = get_news_with_audio(news_data)
+        # Create output directory if it doesn't exist
+        output_dir = Path(f'./data/{news_house}/news_dataset_with_audio')
+        output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Save the filtered dataset to a new file
-        news_data_with_audio_file_path = output_dir / news_dataset_file_path.name
-        save_json_file(news_data_with_audio_file_path, news_data_with_audio)
+        # Get all JSON file paths from the dataset directory
+        news_dataset_file_paths = list(news_dataset_dir.iterdir())
+        news_dataset_file_paths.sort()
+        
+        for news_dataset_file_path in news_dataset_file_paths:
+            # Read each JSON file
+            news_data = read_json_file(news_dataset_file_path)
+            
+            # Filter the news data for entries with audio
+            news_data_with_audio = get_news_with_audio(news_data)
+            
+            # Save the filtered dataset to a new file
+            news_data_with_audio_file_path = output_dir / news_dataset_file_path.name
+            save_json_file(news_data_with_audio_file_path, news_data_with_audio)
