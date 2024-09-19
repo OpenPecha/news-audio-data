@@ -32,7 +32,22 @@ def has_news_audio(news_info):
     else:
         return False # Check if audio key exists in news_info
 
-def get_news_with_audio(news_data):
+def prepare_news_data_with_audio(news_info):
+    news_data_with_audio = {
+        'title': None,
+        'body_text': None,
+        'audio_url': None,
+        'metadata': {
+            'published_date': None,
+            'author': None,
+            'category': None,
+            'news_url': None
+        }
+    }
+
+    return news_data_with_audio
+
+def get_news_with_audio(news_data, output_dir):
     """Filters news with audio
 
     Args:
@@ -45,7 +60,8 @@ def get_news_with_audio(news_data):
     # Iterate through the news dataset and filter out items with audio
     for news_id, news_info in news_data.items():
         if has_news_audio(news_info):
-            news_data_with_audio[news_id] = news_info
+            news_data_with_audio = prepare_news_data_with_audio(news_info)
+            news_data_with_audio[news_id] = news_data_with_audio
     return news_data_with_audio
 
 def save_json_file(file_path, content):
