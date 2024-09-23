@@ -78,7 +78,7 @@ def download_file(url, dest_path):
     else:
         print(f"Failed to download the file: {url}, status code: {response.status_code}")
 
-def save_json_file(article_data, article_id, output_dir):
+def save_news_file(article_data, article_id, output_dir):
     """Saves content to a json file
 
     Args:
@@ -94,7 +94,6 @@ def save_json_file(article_data, article_id, output_dir):
     if isinstance(audio_url, list) and audio_url:
         audio_url = audio_url[0]  # Use the first audio URL
 
-    # Prepare the audio file name
     audio_file_name = audio_url.split('/')[-1]
     if audio_file_name.endswith('@@stream'):
         audio_file_name = audio_file_name.replace('@@stream', 'mp3')  # Rename to .mp3
@@ -134,4 +133,4 @@ if __name__ == "__main__":
             
             # Save the filtered dataset to a new file
             for article_id, article_data in news_data_with_audio.items():
-                save_json_file(article_data, article_id, output_dir)
+                save_news_file(article_data, article_id, output_dir)
