@@ -1,6 +1,8 @@
 import json
-from pathlib import Path
 import requests
+import subprocess
+
+from pathlib import Path
 
 def read_json_file(file_path):
     """Reads a json file and returns the content
@@ -66,17 +68,49 @@ def get_news_with_audio(news_data):
         if has_news_audio(news_info):
             news_data_with_audio[news_id] = prepare_news_data_with_audio(news_info)
     return news_data_with_audio
+   
 
-downloads_folder = Path.home() / 'Downloads'
+def is_stream(file_name):
+    """The function checks if the file is a stream file
 
-def download_file(url, dest_path):
-    """Downloads the file from the URL to the destination path."""
+    Args:
+        file_name (str): name of the file
+    """
+    pass
+
+def is_mp3(file_name):
+    pass
+
+def download_stream_file(url, dest_path):
+    """Downloads a stream file
+
+    Args:
+        url (str): url of the file
+        dest_path (str): destination path to save the file
+
+    Returns:
+        str: destination path of the file
+    """
+    subprocess.run(["curl", "-o", dest_path, url])
+    return dest_path
+
+def download_mp3_file(url, dest_path):
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         with open(dest_path, 'wb') as file:
             file.write(response.content)
     else:
         print(f"Failed to download the file: {url}, status code: {response.status_code}")
+
+def save_body_text(article_data, article_dir):
+    with open(article_dir / 'news_text.txt', 'w', encoding='utf-8') as text_file:
+        text_file.write(article_data['body_text'])
+    pass
+
+def save_metadata(article_data, article_dir):
+    with open(article_dir / 'metadata.json', 'w', encoding='utf-8') as meta_file:
+        json.dump(article_data['metadata'], meta_file, ensure_ascii=False, indent=4)
+    pass
 
 def save_news_file(article_data, article_id, output_dir):
     """Saves content to a json file
@@ -95,21 +129,18 @@ def save_news_file(article_data, article_id, output_dir):
         audio_url = audio_url[0]  # Use the first audio URL
 
     audio_file_name = audio_url.split('/')[-1]
-    if audio_file_name.endswith('@@stream'):
-        audio_file_name = audio_file_name.replace('@@stream', 'mp3')  # Rename to .mp3
-
     audio_file_path = article_dir / audio_file_name
+    if is_stream(audio_file_name):
+        download_stream_file(audio_url, audio_file_path)
+    elif is_mp3(audio_file_name):
+        download_mp3_file(audio_url, audio_file_path)
 
-    # Download the audio file
-    download_file(audio_url, audio_file_path)
-
-    # Save body text
-    with open(article_dir / 'news_text.txt', 'w', encoding='utf-8') as text_file:
-        text_file.write(article_data['body_text'])
-
-    # Save metadata
-    with open(article_dir / 'metadata.json', 'w', encoding='utf-8') as meta_file:
-        json.dump(article_data['metadata'], meta_file, ensure_ascii=False, indent=4)
+    save_body_text(article_data, article_dir)
+    save_metadata(article_data, article_dir)
+    
+    return article_dir
+    
+    
 
 if __name__ == "__main__":
     news_houses = ['VOT', 'VOA', 'RFA']
