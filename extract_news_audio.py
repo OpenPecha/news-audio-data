@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import requests
 
 def read_json_file(file_path):
     """Reads a json file and returns the content
@@ -25,12 +26,9 @@ def has_news_audio(news_info):
     """
     news_data = news_info.get('data', {})
     news_body = news_data.get('body', {})
-    news_audio_url = news_body.get('Audio', '') # Get the audio URL if it exists
+    news_audio_url = news_body.get('Audio', '')  # Get the audio URL if it exists
 
-    if news_audio_url:
-        return True
-    else:
-        return False # Check if audio key exists in news_info
+    return bool(news_audio_url)
 
 def prepare_news_data_with_audio(news_info):
     """Prepares a structure for news data with audio.
@@ -43,8 +41,8 @@ def prepare_news_data_with_audio(news_info):
     """
     news_data_with_audio = {
         'title': news_info['data']['title'],
-        'body_text':  "\n".join(news_info['data']['body'].get('Text', [])),
-        'audio_url':  news_info['data']['body'].get('Audio', ''),
+        'body_text': "\n".join(news_info['data']['body'].get('Text', [])),
+        'audio_url': news_info['data']['body'].get('Audio', ''),
         'metadata': {
             'published_date': news_info['data']['meta_data'].get('Date'),
             'author': news_info['data']['meta_data'].get('Author'),
@@ -54,7 +52,7 @@ def prepare_news_data_with_audio(news_info):
     }
     return news_data_with_audio
 
-def get_news_with_audio(news_data, output_dir):
+def get_news_with_audio(news_data):
     """Filters news with audio
 
     Args:
@@ -69,6 +67,17 @@ def get_news_with_audio(news_data, output_dir):
             news_data_with_audio[news_id] = prepare_news_data_with_audio(news_info)
     return news_data_with_audio
 
+downloads_folder = Path.home() / 'Downloads'
+
+def download_file(url, dest_path):
+    """Downloads the file from the URL to the destination path."""
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(dest_path, 'wb') as file:
+            file.write(response.content)
+    else:
+        print(f"Failed to download the file: {url}, status code: {response.status_code}")
+
 def save_json_file(article_data, article_id, output_dir):
     """Saves content to a json file
 
@@ -80,16 +89,20 @@ def save_json_file(article_data, article_id, output_dir):
     article_dir = output_dir / article_id
     article_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get the first audio URL if it is a list
+    # Check if audio URL is valid
     audio_url = article_data['audio_url']
     if isinstance(audio_url, list) and audio_url:
         audio_url = audio_url[0]  # Use the first audio URL
 
-    # Now you can safely use split
-    audio_file_name = audio_url.split('/')[-1]  # Extracts the audio file name from the URL
+    # Prepare the audio file name
+    audio_file_name = audio_url.split('/')[-1]
+    if audio_file_name.endswith('@@stream'):
+        audio_file_name = audio_file_name.replace('@@stream', 'mp3')  # Rename to .mp3
 
-    with open(article_dir / audio_file_name, 'w', encoding='utf-8') as audio_file:
-        audio_file.write(audio_url)  # Simulate saving the audio file
+    audio_file_path = article_dir / audio_file_name
+
+    # Download the audio file
+    download_file(audio_url, audio_file_path)
 
     # Save body text
     with open(article_dir / 'news_text.txt', 'w', encoding='utf-8') as text_file:
@@ -117,8 +130,8 @@ if __name__ == "__main__":
             news_data = read_json_file(news_dataset_file_path)
             
             # Filter the news data for entries with audio
-            news_data_with_audio = get_news_with_audio(news_data, output_dir)  
+            news_data_with_audio = get_news_with_audio(news_data)
             
             # Save the filtered dataset to a new file
             for article_id, article_data in news_data_with_audio.items():
-                save_json_file(article_data, article_id, output_dir) 
+                save_json_file(article_data, article_id, output_dir)
