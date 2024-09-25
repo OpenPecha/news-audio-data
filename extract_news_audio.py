@@ -71,18 +71,29 @@ def get_news_with_audio(news_data):
    
 
 def is_stream(file_name):
-    """The function checks if the file is a stream file
+    """Checks if the file is a stream file.
 
     Args:
         file_name (str): name of the file
+
+    Returns:
+        bool: True if the file is a stream file, False otherwise
     """
-    pass
+    return file_name.endswith('.stream')
 
 def is_mp3(file_name):
-    pass
+    """Checks if the file is an mp3 file.
+
+    Args:
+        file_name (str): name of the file
+
+    Returns:
+        bool: True if the file is an mp3 file, False otherwise
+    """
+    return file_name.endswith('.mp3')
 
 def download_stream_file(url, dest_path):
-    """Downloads a stream file
+    """Downloads a stream file using ffmpeg and saves it with .mp3 extension.
 
     Args:
         url (str): url of the file
@@ -91,26 +102,47 @@ def download_stream_file(url, dest_path):
     Returns:
         str: destination path of the file
     """
-    subprocess.run(["curl", "-o", dest_path, url])
-    return dest_path
+    user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
+    try:
+        subprocess.run(["ffmpeg", "-headers", f"User-Agent: {user_agent}", "-i", url, "-c", "copy", dest_path], check=True)
+        print(f"Downloaded stream file: {url}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error downloading stream file: {e}")
 
 def download_mp3_file(url, dest_path):
+    """function to download the mp3 file
+
+    Args:
+        url (str): link of the audio file
+        dest_path (str): destination of the file path
+    """
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         with open(dest_path, 'wb') as file:
             file.write(response.content)
+        print(f"Downloaded MP3: {url}")
     else:
-        print(f"Failed to download the file: {url}, status code: {response.status_code}")
+        print(f"Failed to download the MP3 file: {url}, status code: {response.status_code}")
 
 def save_body_text(article_data, article_dir):
+    """Saves the body text of the article to a text file.
+
+    Args:
+        article_data (dict): The article data containing the body text.
+        article_dir (Path): The directory where the text file will be saved.
+    """
     with open(article_dir / 'news_text.txt', 'w', encoding='utf-8') as text_file:
         text_file.write(article_data['body_text'])
-    pass
 
 def save_metadata(article_data, article_dir):
+    """Saves metadata of the article to a JSON file.
+
+    Args:
+        article_data (dict): The article data containing metadata.
+        article_dir (Path): The directory where the metadata file will be saved.
+    """
     with open(article_dir / 'metadata.json', 'w', encoding='utf-8') as meta_file:
         json.dump(article_data['metadata'], meta_file, ensure_ascii=False, indent=4)
-    pass
 
 def save_news_file(article_data, article_id, output_dir):
     """Saves content to a json file
@@ -123,27 +155,37 @@ def save_news_file(article_data, article_id, output_dir):
     article_dir = output_dir / article_id
     article_dir.mkdir(parents=True, exist_ok=True)
 
-    # Check if audio URL is valid
     audio_url = article_data['audio_url']
+    
     if isinstance(audio_url, list) and audio_url:
         audio_url = audio_url[0]  # Use the first audio URL
+    
+    if not audio_url.startswith(('http://', 'https://')):
+        print(f"Invalid audio URL for article {article_id}: {audio_url}")
+        return
 
-    audio_file_name = audio_url.split('/')[-1]
+    audio_file_name = f"{article_id}.mp3"
     audio_file_path = article_dir / audio_file_name
-    if is_stream(audio_file_name):
-        download_stream_file(audio_url, audio_file_path)
-    elif is_mp3(audio_file_name):
+
+    try:
         download_mp3_file(audio_url, audio_file_path)
+
+        # Check if the file was created
+        if not audio_file_path.exists():
+            raise FileNotFoundError("Audio file was not saved.")
+
+    except Exception as e:
+        print(f"Failed to download audio for article {article_id}: {e}")
+        # Save the audio URL as a text file
+        with open(article_dir / f"{audio_file_name}", 'w', encoding='utf-8') as url_file:
+            url_file.write(audio_url)
+        print(f"Audio URL saved for article {article_id} as {audio_file_name}")
 
     save_body_text(article_data, article_dir)
     save_metadata(article_data, article_dir)
-    
-    return article_dir
-    
-    
 
 if __name__ == "__main__":
-    news_houses = ['VOT', 'VOA', 'RFA']
+    news_houses = ['VOA', 'VOT', 'RFA']
     for news_house in news_houses:
         news_dataset_dir = Path(f'./data/{news_house}/news_dataset')
         
