@@ -3,6 +3,7 @@ import requests
 import subprocess
 
 from pathlib import Path
+from tqdm import tqdm
 
 def read_json_file(file_path):
     """Reads a json file and returns the content
@@ -32,29 +33,57 @@ def has_news_audio(news_info):
 
     return bool(news_audio_url)
 
-def prepare_news_data_with_audio(news_info):
-    """Prepares a structure for news data with audio.
+def extract_speaker_name(second_last_line):
+    """Extracts the speaker's name from the second last line of text.
+
+    Args:
+        second_last_line (str): The second last line of text.
+
+    Returns:
+        str: Extracted speaker's name.
+    """
+    parts = second_last_line.split(' ')
+    if len(parts) > 1:
+        return ' '.join(parts[1:])  
+    return ''  
+
+def prepare_news_data_with_audio(news_info, news_house):
+    """Prepares a structure for news data with audio, including speaker's name if applicable for the news house.
 
     Args:
         news_info (dict): The news information dictionary containing all relevant data.
+        news_house (str): The news house identifier (e.g., 'VOA', 'VOT', 'RFA').
 
     Returns:
         dict: A dictionary containing the title, body text, audio URL, and metadata.
     """
+    body_text_lines = news_info['data']['body'].get('Text', [])
+    body_text = "\n".join(body_text_lines)
+
+    speaker_name = "Unknown"  # Default speaker name
+
+    if news_house == 'VOA' and len(body_text_lines) >= 2:
+        second_last_line = body_text_lines[-2].strip()  
+        
+        
+        speaker_name = extract_speaker_name(second_last_line)  
+
     news_data_with_audio = {
         'title': news_info['data']['title'],
-        'body_text': "\n".join(news_info['data']['body'].get('Text', [])),
+        'body_text': body_text,
         'audio_url': news_info['data']['body'].get('Audio', ''),
         'metadata': {
             'published_date': news_info['data']['meta_data'].get('Date'),
             'author': news_info['data']['meta_data'].get('Author'),
+            'speaker': speaker_name ,
             'category': news_info['data']['meta_data'].get('Tags', []),
             'news_url': news_info['data']['meta_data'].get('URL')
+
         }
     }
     return news_data_with_audio
 
-def get_news_with_audio(news_data):
+def get_news_with_audio(news_data, news_house):
     """Filters news with audio
 
     Args:
@@ -66,32 +95,9 @@ def get_news_with_audio(news_data):
     news_data_with_audio = {}
     for news_id, news_info in news_data.items():
         if has_news_audio(news_info):
-            news_data_with_audio[news_id] = prepare_news_data_with_audio(news_info)
+            news_data_with_audio[news_id] = prepare_news_data_with_audio(news_info, news_house)
     return news_data_with_audio
    
-
-def is_stream(file_name):
-    """Checks if the file is a stream file.
-
-    Args:
-        file_name (str): name of the file
-
-    Returns:
-        bool: True if the file is a stream file, False otherwise
-    """
-    return file_name.endswith('.stream')
-
-def is_mp3(file_name):
-    """Checks if the file is an mp3 file.
-
-    Args:
-        file_name (str): name of the file
-
-    Returns:
-        bool: True if the file is an mp3 file, False otherwise
-    """
-    return file_name.endswith('.mp3')
-
 def download_stream_file(url, dest_path):
     """Downloads a stream file using ffmpeg and saves it with .mp3 extension.
 
@@ -120,7 +126,6 @@ def download_mp3_file(url, dest_path):
     if response.status_code == 200:
         with open(dest_path, 'wb') as file:
             file.write(response.content)
-        print(f"Downloaded MP3: {url}")
     else:
         print(f"Failed to download the MP3 file: {url}, status code: {response.status_code}")
 
@@ -145,7 +150,15 @@ def save_metadata(article_data, article_dir):
         json.dump(article_data['metadata'], meta_file, ensure_ascii=False, indent=4)
 
 def save_news_file(article_data, article_id, output_dir):
-    """Saves content to a json file
+    """Saves content to a file
+
+    Args:
+        article_data (dict): The article data containing audio URL, body text, and metadata.
+        article_id (str): The ID of the article, used for naming the directory.
+        output_dir (Path): The directory where the article data will be saved.
+    """
+def save_news_file(article_data, article_id, output_dir):
+    """Saves content to a file
 
     Args:
         article_data (dict): The article data containing audio URL, body text, and metadata.
@@ -164,22 +177,10 @@ def save_news_file(article_data, article_id, output_dir):
         print(f"Invalid audio URL for article {article_id}: {audio_url}")
         return
 
-    audio_file_name = f"{article_id}.mp3"
-    audio_file_path = article_dir / audio_file_name
-
-    try:
-        download_mp3_file(audio_url, audio_file_path)
-
-        # Check if the file was created
-        if not audio_file_path.exists():
-            raise FileNotFoundError("Audio file was not saved.")
-
-    except Exception as e:
-        print(f"Failed to download audio for article {article_id}: {e}")
-        # Save the audio URL as a text file
-        with open(article_dir / f"{audio_file_name}", 'w', encoding='utf-8') as url_file:
-            url_file.write(audio_url)
-        print(f"Audio URL saved for article {article_id} as {audio_file_name}")
+    # Instead of downloading, save the audio URL to a text file
+    with open(article_dir / f"{article_id}_audio_url.txt", 'w', encoding='utf-8') as url_file:
+        url_file.write(audio_url)
+    print(f"Audio URL saved for article {article_id} as {article_id}_audio_url.txt")
 
     save_body_text(article_data, article_dir)
     save_metadata(article_data, article_dir)
@@ -188,22 +189,15 @@ if __name__ == "__main__":
     news_houses = ['VOA', 'VOT', 'RFA']
     for news_house in news_houses:
         news_dataset_dir = Path(f'./data/{news_house}/news_dataset')
-        
-        # Create output directory if it doesn't exist
         output_dir = Path(f'./data/{news_house}/news_dataset_with_audio')
         output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Get all JSON file paths from the dataset directory
+
         news_dataset_file_paths = list(news_dataset_dir.iterdir())
         news_dataset_file_paths.sort()
-        
-        for news_dataset_file_path in news_dataset_file_paths:
-            # Read each JSON file
+
+        for news_dataset_file_path in tqdm(news_dataset_file_paths, desc=f'Processing {news_house} news files'):
             news_data = read_json_file(news_dataset_file_path)
-            
-            # Filter the news data for entries with audio
-            news_data_with_audio = get_news_with_audio(news_data)
-            
-            # Save the filtered dataset to a new file
-            for article_id, article_data in news_data_with_audio.items():
+            news_data_with_audio = get_news_with_audio(news_data, news_house)
+
+            for article_id, article_data in tqdm(news_data_with_audio.items(), desc='Saving articles'):
                 save_news_file(article_data, article_id, output_dir)
