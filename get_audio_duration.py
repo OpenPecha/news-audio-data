@@ -4,7 +4,7 @@ from mutagen.mp3 import MP3  # To get audio duration
 from datetime import datetime
 
 
-metadata_csv_path = './news_data.csv'
+metadata_csv_path = './news_audio_with_duration.csv'
 df = pd.read_csv(metadata_csv_path)
 
 updated_data = []

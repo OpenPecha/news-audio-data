@@ -1,6 +1,7 @@
 import json
 import requests
 import subprocess
+import re
 
 from pathlib import Path
 from tqdm import tqdm
@@ -33,19 +34,21 @@ def has_news_audio(news_info):
 
     return bool(news_audio_url)
 
-def extract_speaker_name(second_last_line):
-    """Extracts the speaker's name from the second last line of text.
+def extract_speaker_from_text(body_text_lines):
+    """Extracts speaker's name from the text after the phrase 'གསར་འགོད་པ།'.
 
     Args:
-        second_last_line (str): The second last line of text.
+        body_text_lines (list): List of lines in the text.
 
     Returns:
-        str: Extracted speaker's name.
+        str: Extracted speaker's name or empty string if not found.
     """
-    parts = second_last_line.split(' ')
-    if len(parts) > 1:
-        return ' '.join(parts[1:])  
-    return ''  
+    # Regular expression to find 'གསར་འགོད་པ།' and capture the next word
+    for line in body_text_lines:
+        match = re.search(r'གསར་འགོད་པ།\s+(\S+)', line)
+        if match:
+            return match.group(1)  # Return the word after 'གསར་འགོད་པ།'
+    return ''  # Return empty if no match is found
 
 def prepare_news_data_with_audio(news_info, news_house):
     """Prepares a structure for news data with audio, including speaker's name if applicable for the news house.
@@ -60,13 +63,12 @@ def prepare_news_data_with_audio(news_info, news_house):
     body_text_lines = news_info['data']['body'].get('Text', [])
     body_text = "\n".join(body_text_lines)
 
-    speaker_name = "Unknown"  # Default speaker name
+    # Default speaker name if not found
+    speaker_name = news_info['data']['meta_data'].get('speaker', 'Unknown')
 
-    if news_house == 'VOA' and len(body_text_lines) >= 2:
-        second_last_line = body_text_lines[-2].strip()  
-        
-        
-        speaker_name = extract_speaker_name(second_last_line)  
+    # If the speaker name is 'Unknown', try to extract it from the text
+    if speaker_name == 'Unknown':
+        speaker_name = extract_speaker_from_text(body_text_lines)
 
     news_data_with_audio = {
         'title': news_info['data']['title'],
@@ -75,10 +77,9 @@ def prepare_news_data_with_audio(news_info, news_house):
         'metadata': {
             'published_date': news_info['data']['meta_data'].get('Date'),
             'author': news_info['data']['meta_data'].get('Author'),
-            'speaker': speaker_name ,
+            'speaker': speaker_name,
             'category': news_info['data']['meta_data'].get('Tags', []),
             'news_url': news_info['data']['meta_data'].get('URL')
-
         }
     }
     return news_data_with_audio
